@@ -1,0 +1,302 @@
+
+
+        String left_name = ctx.lVal().IDENT().getText();
+                Symbol left_symbol = currentScope.getSymbol(left_name);
+                if (left_symbol == null)
+                    return;
+
+                Type left_type = left_symbol.getType();
+                String left_type_name = "";
+                int left_act = ctx.lVal().L_BRACKT().size();
+                if (left_type instanceof BasicTypeSymbol)
+                {
+                    left_type_name = ((BasicTypeSymbol) left_type).name;
+                }
+                else if (left_type instanceof ArrayType)
+                {
+                    left_type_name = String.valueOf(((ArrayType) left_type).layer);
+                }
+
+                String right_name = "";
+                String right_type_name = "";
+                int right_act = 0;
+                if (ctx.exp() instanceof SysYParserParser.EXP_LVALContext)
+                {
+                    right_name = ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().IDENT().getText();
+                    Symbol right_symbol = currentScope.getSymbol(right_name);
+                    right_act = ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().L_BRACKT().size();
+                    if (right_symbol!=null)
+                    {
+                        Type right_symbolType = right_symbol.getType();
+                        if (right_symbolType instanceof BasicTypeSymbol)
+                        {
+                            right_type_name = ((BasicTypeSymbol) right_symbolType).name;
+                        }
+                        else if (right_symbolType instanceof ArrayType)
+                        {
+                            right_type_name = String.valueOf(((ArrayType) right_symbolType).layer);
+                        }
+                    }
+                }
+                else if (ctx.exp() instanceof SysYParserParser.EXP_FUNC_ARGUMENTContext)
+                {
+                    right_name = ((SysYParserParser.EXP_FUNC_ARGUMENTContext) ctx.exp()).IDENT().getText();
+                    Symbol right_symbol = currentScope.getSymbol(right_name);
+                    if (right_symbol instanceof FunctionSymbolScope)
+                    {
+                        Type returnType = ((FunctionSymbolScope) right_symbol).returnType;
+                        if (returnType instanceof BasicTypeSymbol)
+                        {
+                            right_type_name = ((BasicTypeSymbol) returnType).name;
+                            if (right_type_name.equals("void"))
+                            {
+                                opSet.add(ctx.start.getLine());
+                                ErrorPrinter.print(5,ctx.start.getLine());
+                                return;
+                            }
+                        }
+                    }
+                }
+                if (right_act>0&&!isNumeric(right_type_name))
+                    return;
+                if (right_act>0&&right_type_name.equals("int"))
+                    return;
+                if (left_act>0&&left_type_name.equals("int"))
+                    return;
+
+                if (left_type_name.equals("int"))
+                {
+                    if (right_type_name.equals("int"))
+                    {}
+                    else if (isNumeric(right_type_name)&&Integer.parseInt(right_type_name)==right_act)
+                    {}
+                    else
+                    {
+                        opSet.add(ctx.start.getLine());
+                        ErrorPrinter.print(5,ctx.start.getLine());
+                    }
+                }
+                else if (isNumeric(left_type_name))
+                {
+                    int left_delta = Integer.parseInt(left_type_name)-left_act;
+                    if (left_delta==0)
+                    {
+                        if (right_type_name.equals("int"))
+                        {}
+                        else if (isNumeric(right_type_name)&&Integer.parseInt(right_type_name)==right_act)
+                        {}
+                        else
+                        {
+                            opSet.add(ctx.start.getLine());
+                            ErrorPrinter.print(5,ctx.start.getLine());
+                        }
+                    }
+                    else if (left_delta>0)
+                    {
+                        if (isNumeric(right_type_name)&&Integer.parseInt(right_type_name)-right_act==left_delta)
+                        {}
+                        else
+                        {
+                            opSet.add(ctx.start.getLine());
+                            ErrorPrinter.print(5,ctx.start.getLine());
+                        }
+                    }
+                }
+
+                if (ctx.lVal().L_BRACKT().size()==0) // IDENT ONLY- type 5 error
+                        {
+                            Symbol left_var = currentScope.getSymbol(ctx.lVal().IDENT().getText());
+                            if (left_var==null)
+                                return;
+                            Type left_type = left_var.getType();
+                            String left_type_name = "";
+                            if (left_type instanceof BasicTypeSymbol)
+                            {
+                                left_type_name = ((BasicTypeSymbol) left_type).name;
+                            }
+                            else if (left_type instanceof ArrayType)
+                            {
+                                left_type_name = String.valueOf(((ArrayType) left_type).layer);
+                            }
+
+                            if (ctx.exp() instanceof SysYParserParser.EXP_LVALContext)
+                            {
+                                String right_name = ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().IDENT().getText();
+                                Symbol right = currentScope.getSymbol(right_name);
+                                String right_type_name = "";
+                                if (right instanceof FunctionSymbolScope && ((FunctionSymbolScope) right).returnType instanceof BasicTypeSymbol)
+                                {
+                                    right_type_name = ((BasicTypeSymbol) ((FunctionSymbolScope) right).returnType).name;
+                                }
+                                else if (right.getType() instanceof BasicTypeSymbol)
+                                {
+                                    right_type_name = ((BasicTypeSymbol) right.getType()).name;
+                                }
+                                else if (right.getType() instanceof ArrayType)
+                                {
+                                    right_type_name = String.valueOf(((ArrayType) right.getType()).layer);
+                                    if (left_type_name.equals("int")
+                                            && ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().L_BRACKT().size() == ((ArrayType) right.getType()).layer)
+                                    {
+
+                                        return;
+                                    }
+                                }
+
+                                if (!left_type_name.equals(right_type_name))
+                                {
+                                    opSet.add(ctx.start.getLine());
+                                    //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                    ErrorPrinter.print(5,ctx.start.getLine());
+                                }
+                            }
+                            else if (ctx.exp() instanceof SysYParserParser.EXP_FUNC_ARGUMENTContext)
+                            {
+                                if (isNumeric(left_type_name))
+                                {
+                                    opSet.add(ctx.start.getLine());
+                                    //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                    ErrorPrinter.print(5,ctx.start.getLine());
+                                }
+                                String right_name = ((SysYParserParser.EXP_FUNC_ARGUMENTContext) ctx.exp()).IDENT().getText();
+                                Symbol right_symbol = currentScope.getSymbol(right_name);
+                                if (right_symbol instanceof FunctionSymbolScope)
+                                {
+                                    Type returnType = ((FunctionSymbolScope) right_symbol).returnType;
+                                    if (returnType instanceof BasicTypeSymbol)
+                                    {
+                                        String right_type_name = ((BasicTypeSymbol) returnType).name;
+                                        if (right_type_name.equals("void"))
+                                        {
+                                            opSet.add(ctx.start.getLine());
+                                            //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                            ErrorPrinter.print(5,ctx.start.getLine());
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            if (left_type_name.equals("int"))
+                                            {}
+                                            else {
+                                                opSet.add(ctx.start.getLine());
+                                                //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                                ErrorPrinter.print(5,ctx.start.getLine());
+                                            }
+                                        }
+                                    }
+
+                                }
+
+
+                            }
+                        }
+                        else
+                        {
+                            int act = ctx.lVal().L_BRACKT().size();
+                            Symbol left_var = currentScope.getSymbol(ctx.lVal().IDENT().getText());
+                            if (left_var==null)
+                                return;
+                            if (left_var instanceof FunctionSymbolScope)
+                                return;
+                            Type left_type = left_var.getType();
+                            String left_type_name = "";
+                            if (left_type instanceof BasicTypeSymbol)
+                            {
+                                return;
+                            }
+                            else if (left_type instanceof ArrayType)
+                            {
+                                left_type_name = String.valueOf(((ArrayType) left_type).layer);
+                            }
+                            if (left_type_name.length()==0 || act > Integer.parseInt(left_type_name))
+                                return;
+
+                            if (ctx.exp() instanceof SysYParserParser.EXP_LVALContext)
+                            {
+                                String right_name = ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().IDENT().getText();
+                                int right_act = ((SysYParserParser.EXP_LVALContext) ctx.exp()).lVal().L_BRACKT().size();
+                                Symbol right = currentScope.getSymbol(right_name);
+                                String right_type_name = "";
+                                if (right instanceof FunctionSymbolScope
+                                        && ((FunctionSymbolScope) right).returnType instanceof BasicTypeSymbol)
+                                {
+                                    right_type_name = ((BasicTypeSymbol) ((FunctionSymbolScope) right).returnType).name;
+                                    if (right_act==0)
+                                    {
+                                        if (right_type_name.equals("int") && act<Integer.parseInt(left_type_name))
+                                        {
+                                            opSet.add(ctx.start.getLine());
+                                            //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                            ErrorPrinter.print(5,ctx.start.getLine());
+                                        }
+                                        else if (right_type_name.equals("void"))
+                                        {
+                                            opSet.add(ctx.start.getLine());
+                                            //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                            ErrorPrinter.print(5,ctx.start.getLine());
+                                        }
+                                    }
+                                }
+                                else if (right.getType() instanceof BasicTypeSymbol)
+                                {
+                                    right_type_name = ((BasicTypeSymbol) right.getType()).name;
+                                    if (right_type_name.equals("int") && act == Integer.parseInt(left_type_name))
+                                    {
+
+                                    }
+                                    else
+                                    {
+                                        opSet.add(ctx.start.getLine());
+                                        //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                        ErrorPrinter.print(5,ctx.start.getLine());
+                                    }
+                                }
+                                else if (right.getType() instanceof ArrayType)
+                                {
+                                    right_type_name = String.valueOf(((ArrayType) right.getType()).layer);
+                                    int left_delta = Integer.parseInt(left_type_name)-act;
+                                    int right_delta = Integer.parseInt(right_type_name)-right_act;
+                                    if (left_delta!=right_delta)
+                                    {
+                                        opSet.add(ctx.start.getLine());
+                                        //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                        ErrorPrinter.print(5,ctx.start.getLine());
+                                    }
+                                }
+
+                            }
+                            else if (ctx.exp() instanceof SysYParserParser.EXP_FUNC_ARGUMENTContext)
+                            {
+                                String right_name = ((SysYParserParser.EXP_FUNC_ARGUMENTContext) ctx.exp()).IDENT().getText();
+                                Symbol right_symbol = currentScope.getSymbol(right_name);
+                                if (right_symbol instanceof FunctionSymbolScope)
+                                {
+                                    Type returnType = ((FunctionSymbolScope) right_symbol).returnType;
+                                    if (returnType instanceof BasicTypeSymbol)
+                                    {
+                                        String right_type_name = ((BasicTypeSymbol) returnType).name;
+                                        if (right_type_name.equals("void"))
+                                        {
+                                            opSet.add(ctx.start.getLine());
+                                            //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                            ErrorPrinter.print(5,ctx.start.getLine());
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            if (left_type_name.equals("int"))
+                                            {}
+                                            else if (isNumeric(left_type_name)&&Integer.parseInt(left_type_name)==act)
+                                            {}
+                                            else {
+                                                opSet.add(ctx.start.getLine());
+                                                //System.err.println("Error type 5 at Line "+ctx.start.getLine());
+                                                ErrorPrinter.print(5,ctx.start.getLine());
+                                            }
+                                        }
+                                    }
+
+                                }
+                            }
+
+                        }
